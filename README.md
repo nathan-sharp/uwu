@@ -6,7 +6,6 @@ Primary runtime: **PAWS Runtime**
 
 - PAWS expansion: **Platform Agnostic Wrapper Service**
 - Public meaning: a stable cross-platform execution utility
-- Community wink: the acronym stays memorable
 
 Current prototype supports:
 - Variables (`let x = 10`)
