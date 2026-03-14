@@ -1,5 +1,5 @@
-from meridian.errors import LexError
-from meridian.tokens import KEYWORDS, Token
+from uwu.errors import LexError
+from uwu.tokens import KEYWORDS, Token
 
 
 class Lexer:

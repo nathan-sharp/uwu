@@ -1,6 +1,6 @@
-from meridian.ast_nodes import AssignStmt, Binary, LetStmt, Name, Number, PrintStmt, Program, String
-from meridian.errors import ParseError
-from meridian.tokens import Token
+from uwu.ast_nodes import AssignStmt, Binary, LetStmt, Name, Number, PrintStmt, Program, String
+from uwu.errors import ParseError
+from uwu.tokens import Token
 
 
 class Parser:

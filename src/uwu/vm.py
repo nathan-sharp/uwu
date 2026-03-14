@@ -1,6 +1,6 @@
-from meridian.bytecode import Chunk
-from meridian.errors import RuntimeErrorM
-from meridian.types import Operand
+from uwu.bytecode import Chunk
+from uwu.errors import RuntimeErrorM
+from uwu.types import Operand
 
 
 Value = Operand

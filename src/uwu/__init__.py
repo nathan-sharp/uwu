@@ -1,4 +1,4 @@
-"""Meridian language prototype package."""
+"""UWU language prototype package."""
 
 __all__ = [
     "lexer",

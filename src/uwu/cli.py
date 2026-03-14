@@ -2,11 +2,11 @@ import argparse
 import pathlib
 import sys
 
-from meridian.compiler import Compiler
-from meridian.errors import MeridianError
-from meridian.lexer import Lexer
-from meridian.parser import Parser
-from meridian.vm import VM
+from uwu.compiler import Compiler
+from uwu.errors import UwuError
+from uwu.lexer import Lexer
+from uwu.parser import Parser
+from uwu.vm import VM
 
 RUNTIME_NAME = "PAWS Runtime"
 RUNTIME_EXPANSION = "Platform Agnostic Wrapper Service"
@@ -28,7 +28,7 @@ def main() -> int:
     )
     sub = parser.add_subparsers(dest="command")
 
-    run_parser = sub.add_parser("run", help="Run a Meridian source file")
+    run_parser = sub.add_parser("run", help="Run a .uwu source file")
     run_parser.add_argument("file", type=pathlib.Path)
 
     args = parser.parse_args()
@@ -42,7 +42,7 @@ def main() -> int:
     except FileNotFoundError:
         print(f"{RUNTIME_NAME} error: File not found: {args.file}", file=sys.stderr)
         return 2
-    except MeridianError as exc:
+    except UwuError as exc:
         print(f"{RUNTIME_NAME} error: {exc}", file=sys.stderr)
         return 3
 

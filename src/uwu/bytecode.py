@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from meridian.types import Operand
+from uwu.types import Operand
 
 
 @dataclass

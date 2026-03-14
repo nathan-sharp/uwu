@@ -2,7 +2,7 @@
 name = "paws-runtime"
 version = "0.1.0"
 edition = "2021"
-description = "Standalone Meridian runtime for .uwu programs"
+description = "Standalone PAWS runtime for .uwu programs"
 
 [[bin]]
 name = "paws"

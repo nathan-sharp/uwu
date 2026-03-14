@@ -1,9 +1,9 @@
-from meridian.ast_nodes import AssignStmt, Binary, LetStmt, Name, Number, PrintStmt, Program, String
-from meridian.bytecode import Chunk
-from meridian.errors import MeridianError
+from uwu.ast_nodes import AssignStmt, Binary, LetStmt, Name, Number, PrintStmt, Program, String
+from uwu.bytecode import Chunk
+from uwu.errors import UwuError
 
 
-class CompileError(MeridianError):
+class CompileError(UwuError):
     pass
 
 

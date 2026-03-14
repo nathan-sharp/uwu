@@ -1,6 +1,6 @@
-# Meridian (Prototype)
+# .uwu Language (Prototype)
 
-Meridian is an early prototype of a portable language runtime.
+This is an early prototype of a portable language runtime centered on `.uwu` source files.
 
 Primary runtime: **PAWS Runtime**
 
@@ -36,7 +36,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e .
 python -m pip install pyinstaller
-python -m PyInstaller --onefile --name paws --paths src src/meridian/cli.py
+python -m PyInstaller --onefile --name paws --paths src src/uwu/cli.py
 .\dist\paws.exe run .\examples\hello.uwu
 ```
 
@@ -48,7 +48,7 @@ An experimental native implementation also exists in `runtime/` and can be built
 
 ```bash
 python -m pip install -e .
-python -m meridian.cli run examples/hello.uwu
+python -m uwu.cli run examples/hello.uwu
 ```
 
 ## Example
@@ -57,7 +57,7 @@ python -m meridian.cli run examples/hello.uwu
 let x = 2
 let y = 3
 print x + y * 10
-print "Meridian online"
+print "uwu online"
 ```
 
 ## Status
@@ -66,4 +66,4 @@ This is phase-1 bootstrap code to start implementation. It is intentionally smal
 
 Current architecture includes two implementations:
 - Native standalone runtime (`runtime/`) for end users
-- Python implementation (`src/meridian/`) used to build/distribute `paws.exe`
+- Python implementation (`src/uwu/`) used to build/distribute `paws.exe`

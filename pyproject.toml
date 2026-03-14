@@ -3,17 +3,17 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "meridian-lang"
+name = "uwu-lang"
 version = "0.1.0"
-description = "Meridian language prototype: lexer, parser, compiler, and bytecode VM"
+description = "UWU language prototype: lexer, parser, compiler, and bytecode VM"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-  {name = "Meridian Authors"}
+  {name = "UWU Authors"}
 ]
 
 [project.scripts]
-meridian = "meridian.cli:main"
+paws = "uwu.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
