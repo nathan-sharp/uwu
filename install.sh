@@ -50,6 +50,8 @@ fi
 
 chmod +x "$BIN_DIR/$BIN_NAME"
 
+rm -rf "$HOME/.paws"
+
 # macOS: remove the quarantine flag that Gatekeeper sets on downloaded files
 if [ "$OS_KEY" = "macos" ]; then
   xattr -d com.apple.quarantine "$BIN_DIR/$BIN_NAME" 2>/dev/null || true

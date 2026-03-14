@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "uwu-lang"
-version = "0.1.0"
+dynamic = ["version"]
 description = "UWU language prototype: lexer, parser, compiler, and bytecode VM"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -20,3 +20,6 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "uwu.__version__"}

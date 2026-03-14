@@ -12,10 +12,10 @@ $BinName = "paws.exe"
 
 # ── detect architecture ───────────────────────────────────────────────────────
 $RuntimeArch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
-$ArchKey = if ($RuntimeArch -eq [System.Runtime.InteropServices.Architecture]::Arm64) {
-    "aarch64"
-} else {
-    "x86_64"
+$ArchKey = "x86_64"
+
+if ($RuntimeArch -eq [System.Runtime.InteropServices.Architecture]::Arm64) {
+    Write-Host "Windows ARM64 detected; using the x86_64 PAWS build via Windows emulation."
 }
 
 $Asset = "paws-windows-${ArchKey}.exe"
@@ -30,6 +30,15 @@ New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 
 $Dest = Join-Path $BinDir $BinName
 Invoke-WebRequest -Uri $Url -OutFile $Dest -UseBasicParsing
+
+$LegacyDir = Join-Path $HOME ".paws"
+$LegacyWrapper = Join-Path $BinDir "paws.bat"
+if (Test-Path $LegacyWrapper) {
+    Remove-Item -Force $LegacyWrapper
+}
+if (Test-Path $LegacyDir) {
+    Remove-Item -Recurse -Force $LegacyDir
+}
 
 Write-Host "Installed  : $Dest"
 

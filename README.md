@@ -46,6 +46,11 @@ paws run examples/hello.uwu
 
 After installation `paws` is a fully standalone executable. Python is not required to run `.uwu` programs.
 
+Built-in runtime commands:
+- `paws help` shows the available commands and the GitHub project link
+- `paws version` prints the installed PAWS version
+- `paws update` checks the latest GitHub release, installs it if newer, and cleans up legacy install traces
+
 ---
 
 ## Quick start
