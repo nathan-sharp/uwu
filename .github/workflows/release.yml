@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # needed to create the GitHub Release and upload assets
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: paws-linux-x86_64
+          - os: ubuntu-24.04-arm
+            asset: paws-linux-aarch64
+          - os: macos-13
+            asset: paws-macos-x86_64
+          - os: macos-latest
+            asset: paws-macos-aarch64
+          - os: windows-latest
+            asset: paws-windows-x86_64.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet pyinstaller
+          python -m pip install --quiet -e .
+
+      - name: Compile standalone binary
+        run: >
+          python -m PyInstaller
+          --onefile
+          --name paws
+          --paths src
+          --noconfirm
+          --log-level WARN
+          src/uwu/cli.py
+
+      # PyInstaller names the output 'paws' on Unix and 'paws.exe' on Windows.
+      # Rename to the asset name so each platform's file is unambiguous.
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        run: mv dist/paws dist/${{ matrix.asset }}
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        run: Rename-Item dist\paws.exe ${{ matrix.asset }}
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset }}
+          # Creates the release automatically if it doesn't exist yet;
+          # subsequent jobs append their assets to the same release.
+          generate_release_notes: true

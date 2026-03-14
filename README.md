@@ -18,38 +18,60 @@ Current prototype supports:
 - Primary extension in this prototype: `.uwu`
 - Formal expansion: **Universal Workload Unit**
 
-## Quick start (standalone for end users, no Python required)
+## Installing the PAWS Runtime
 
-```bash
-paws.exe run hello.uwu
+Open your terminal, paste **one command**, and you're done.  
+No repo cloning, no Python, no package managers — just a single native binary.
+
+**Linux / macOS**
+```sh
+curl -fsSL https://raw.githubusercontent.com/nathan-sharp/uwu/main/install.sh | sh
 ```
 
-## Build standalone runtime artifact (maintainer flow)
-
-Build this once, then distribute `dist/paws.exe` to end users.
-
-On Windows PowerShell:
-
+**Windows (PowerShell)**
 ```powershell
-Set-Location .
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+irm https://raw.githubusercontent.com/nathan-sharp/uwu/main/install.ps1 | iex
+```
+
+The script will:
+1. Detect your OS and architecture automatically
+2. Download the pre-built `paws` binary from the [latest GitHub Release](https://github.com/nathan-sharp/uwu/releases/latest)
+3. Place it in `~/.local/bin` (Linux/macOS) or `%USERPROFILE%\.local\bin` (Windows)
+4. Add that directory to your PATH — on Windows this happens automatically; on Linux/macOS the script prints the one-line command to do it
+
+**Verify the install:**
+```sh
+paws run examples/hello.uwu
+```
+
+After installation `paws` is a fully standalone executable. Python is not required to run `.uwu` programs.
+
+---
+
+## Quick start
+
+```sh
+paws run hello.uwu
+```
+
+## For contributors — building from source
+
+Requires Python 3.10+. Builds the standalone binary from the local source tree:
+
+```sh
+python install.py
+```
+
+To build and test inside the Python dev path without compiling a binary:
+
+```sh
 python -m pip install -e .
-python -m pip install pyinstaller
-python -m PyInstaller --onefile --name paws --paths src src/uwu/cli.py
-.\dist\paws.exe run .\examples\hello.uwu
+python -m uwu.cli run examples/hello.uwu
 ```
 
 ## Optional: native Rust runtime track
 
 An experimental native implementation also exists in `runtime/` and can be built with Rust tooling.
-
-## Quick start (dev-only Python path)
-
-```bash
-python -m pip install -e .
-python -m uwu.cli run examples/hello.uwu
-```
 
 ## Example
 
