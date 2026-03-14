@@ -109,6 +109,37 @@ def cleanup_legacy_install(current_binary: pathlib.Path) -> None:
             path.unlink(missing_ok=True)
 
 
+def _discover_shell_targets() -> set[pathlib.Path]:
+    discovered: set[pathlib.Path] = set()
+    try:
+        if os.name == "nt":
+            proc = subprocess.run(
+                ["where", "paws"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        else:
+            proc = subprocess.run(
+                ["which", "-a", "paws"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        if proc.returncode == 0:
+            for line in proc.stdout.splitlines():
+                candidate = line.strip()
+                if not candidate:
+                    continue
+                path = pathlib.Path(candidate)
+                if path.exists() and path.is_file():
+                    discovered.add(path.resolve())
+    except OSError:
+        # Best-effort discovery only; PATH scanning below still runs.
+        pass
+    return discovered
+
+
 def discover_uninstall_targets(current_path: pathlib.Path | None) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
     file_targets: set[pathlib.Path] = set()
     dir_targets: set[pathlib.Path] = {LEGACY_INSTALL_DIR}
@@ -121,10 +152,13 @@ def discover_uninstall_targets(current_path: pathlib.Path | None) -> tuple[list[
     if current_path is not None:
         file_targets.add(current_path.resolve())
 
+    file_targets.update(_discover_shell_targets())
+
     # Common install locations that may not be on PATH in the current process.
     common_dirs = [
         pathlib.Path.home() / ".local" / "bin",
         pathlib.Path.home() / "bin",
+        pathlib.Path.cwd(),
     ]
 
     for directory in common_dirs:
@@ -209,6 +243,69 @@ for ($i = 0; $i -lt 120; $i++) {{
         break
     }} catch {{
         Start-Sleep -Milliseconds 500
+    }}
+}}
+if (Test-Path {legacy_wrapper}) {{
+    Remove-Item -Force {legacy_wrapper}
+}}
+if (Test-Path {legacy_dir}) {{
+    Remove-Item -Recurse -Force {legacy_dir}
+}}
+Remove-Item -Force {script_literal} -ErrorAction SilentlyContinue
+"""
+    script_path.write_text(script, encoding="utf-8")
+
+    creationflags = 0
+    creationflags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+    creationflags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+    subprocess.Popen(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=creationflags,
+        close_fds=True,
+    )
+
+
+def stage_windows_update_multi(temp_path: pathlib.Path, target_paths: list[pathlib.Path]) -> None:
+    script_path = pathlib.Path(tempfile.mkstemp(suffix=".ps1")[1])
+    legacy_dir = quote_powershell(str(LEGACY_INSTALL_DIR))
+    legacy_wrapper = quote_powershell(str(pathlib.Path.home() / ".local" / "bin" / "paws.bat"))
+    temp_literal = quote_powershell(str(temp_path))
+    script_literal = quote_powershell(str(script_path))
+    target_lines = "\n".join(f"    {quote_powershell(str(path))}" for path in target_paths)
+    if not target_lines:
+        target_lines = "    ''"
+
+    script = f"""$ErrorActionPreference = 'Stop'
+Start-Sleep -Milliseconds 750
+$targets = @(
+{target_lines}
+)
+for ($i = 0; $i -lt $targets.Count; $i++) {{
+    $target = $targets[$i]
+    if (-not $target) {{
+        continue
+    }}
+    for ($j = 0; $j -lt 120; $j++) {{
+        try {{
+            if ($i -eq 0) {{
+                Move-Item -Force {temp_literal} $target
+            }} else {{
+                Copy-Item -Force $targets[0] $target
+            }}
+            break
+        }} catch {{
+            Start-Sleep -Milliseconds 500
+        }}
     }}
 }}
 if (Test-Path {legacy_wrapper}) {{
@@ -337,6 +434,13 @@ def uninstall_runtime() -> int:
 
 def update_runtime() -> int:
     current_path = resolve_install_path()
+    update_targets, _ = discover_uninstall_targets(current_path)
+    update_targets = [path for path in update_targets if path.exists() and path.is_file()]
+    if current_path not in update_targets:
+        update_targets.insert(0, current_path)
+    else:
+        update_targets = [current_path] + [p for p in update_targets if p != current_path]
+
     current_version = __version__
     latest_version, download_url = fetch_latest_release()
 
@@ -352,12 +456,21 @@ def update_runtime() -> int:
     temp_path = download_binary(download_url, current_path)
 
     if os.name == "nt":
-        stage_windows_update(temp_path, current_path)
+        stage_windows_update_multi(temp_path, update_targets)
         print("Update staged. PAWS will replace itself after this process exits.")
         print("Run 'paws version' again in a fresh shell to confirm the new version.")
         return 0
 
     os.replace(temp_path, current_path)
+    for extra_target in update_targets:
+        if extra_target == current_path:
+            continue
+        try:
+            shutil.copy2(current_path, extra_target)
+            extra_target.chmod(0o755)
+        except OSError:
+            # Keep update resilient even if one duplicate path is not writable.
+            continue
     cleanup_legacy_install(current_path)
     print(f"Updated PAWS to version {latest_version}.")
     return 0
