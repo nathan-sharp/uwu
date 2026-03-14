@@ -1,0 +1,1 @@
+Operand = float | str
