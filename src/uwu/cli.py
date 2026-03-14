@@ -109,6 +109,42 @@ def cleanup_legacy_install(current_binary: pathlib.Path) -> None:
             path.unlink(missing_ok=True)
 
 
+def discover_uninstall_targets(current_path: pathlib.Path | None) -> tuple[list[pathlib.Path], list[pathlib.Path]]:
+    file_targets: set[pathlib.Path] = set()
+    dir_targets: set[pathlib.Path] = {LEGACY_INSTALL_DIR}
+
+    if os.name == "nt":
+        basenames = ("paws.exe", "paws.bat", "paws.cmd", "paws")
+    else:
+        basenames = ("paws",)
+
+    if current_path is not None:
+        file_targets.add(current_path.resolve())
+
+    # Common install locations that may not be on PATH in the current process.
+    common_dirs = [
+        pathlib.Path.home() / ".local" / "bin",
+        pathlib.Path.home() / "bin",
+    ]
+
+    for directory in common_dirs:
+        for base in basenames:
+            candidate = (directory / base).expanduser()
+            if candidate.exists() and candidate.is_file():
+                file_targets.add(candidate.resolve())
+
+    for raw_dir in os.environ.get("PATH", "").split(os.pathsep):
+        if not raw_dir:
+            continue
+        path_dir = pathlib.Path(raw_dir).expanduser()
+        for base in basenames:
+            candidate = path_dir / base
+            if candidate.exists() and candidate.is_file():
+                file_targets.add(candidate.resolve())
+
+    return sorted(file_targets), sorted(dir_targets)
+
+
 def fetch_latest_release() -> tuple[str, str]:
     asset_name = detect_release_asset()
     request = urllib.request.Request(
@@ -205,29 +241,43 @@ Remove-Item -Force {script_literal} -ErrorAction SilentlyContinue
     )
 
 
-def stage_windows_uninstall(current_path: pathlib.Path) -> None:
+def stage_windows_uninstall(file_targets: list[pathlib.Path], dir_targets: list[pathlib.Path]) -> None:
     script_path = pathlib.Path(tempfile.mkstemp(suffix=".ps1")[1])
-    legacy_dir = quote_powershell(str(LEGACY_INSTALL_DIR))
-    legacy_wrapper = quote_powershell(str(pathlib.Path.home() / ".local" / "bin" / "paws.bat"))
-    current_literal = quote_powershell(str(current_path))
     script_literal = quote_powershell(str(script_path))
+    files_literal = "\n".join(f"    {quote_powershell(str(path))}" for path in file_targets)
+    dirs_literal = "\n".join(f"    {quote_powershell(str(path))}" for path in dir_targets)
+
+    if not files_literal:
+        files_literal = "    ''"
+    if not dirs_literal:
+        dirs_literal = "    ''"
 
     script = f"""$ErrorActionPreference = 'Stop'
 Start-Sleep -Milliseconds 750
-if (Test-Path {legacy_wrapper}) {{
-    Remove-Item -Force {legacy_wrapper}
+$files = @(
+{files_literal}
+)
+$dirs = @(
+{dirs_literal}
+)
+foreach ($dir in $dirs) {{
+    if ($dir -and (Test-Path $dir)) {{
+        Remove-Item -Recurse -Force $dir
+    }}
 }}
-if (Test-Path {legacy_dir}) {{
-    Remove-Item -Recurse -Force {legacy_dir}
-}}
-for ($i = 0; $i -lt 120; $i++) {{
-    try {{
-        if (Test-Path {current_literal}) {{
-            Remove-Item -Force {current_literal}
+foreach ($file in $files) {{
+    if (-not $file) {{
+        continue
+    }}
+    for ($i = 0; $i -lt 120; $i++) {{
+        try {{
+            if (Test-Path $file) {{
+                Remove-Item -Force $file
+            }}
+            break
+        }} catch {{
+            Start-Sleep -Milliseconds 500
         }}
-        break
-    }} catch {{
-        Start-Sleep -Milliseconds 500
     }}
 }}
 Remove-Item -Force {script_literal} -ErrorAction SilentlyContinue
@@ -255,23 +305,33 @@ Remove-Item -Force {script_literal} -ErrorAction SilentlyContinue
 
 
 def uninstall_runtime() -> int:
-    current_path = resolve_install_path()
-    legacy_wrapper = pathlib.Path.home() / ".local" / "bin" / "paws.bat"
+    try:
+        current_path = resolve_install_path()
+    except RuntimeError:
+        current_path = None
+
+    file_targets, dir_targets = discover_uninstall_targets(current_path)
 
     if os.name == "nt":
-        stage_windows_uninstall(current_path)
+        stage_windows_uninstall(file_targets, dir_targets)
         print("PAWS uninstall staged.")
         print("Close this process and open a new shell to verify 'paws' is gone.")
         return 0
 
-    cleanup_legacy_install(current_path)
-    if current_path.exists():
-        current_path.unlink(missing_ok=True)
+    removed_files = 0
+    removed_dirs = 0
 
-    if legacy_wrapper.exists() and legacy_wrapper != current_path:
-        legacy_wrapper.unlink(missing_ok=True)
+    for path in file_targets:
+        if path.exists() and path.is_file():
+            path.unlink(missing_ok=True)
+            removed_files += 1
 
-    print("PAWS uninstalled.")
+    for path in dir_targets:
+        if path.exists() and path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+            removed_dirs += 1
+
+    print(f"PAWS uninstalled. Removed {removed_files} file(s) and {removed_dirs} directory(ies).")
     return 0
 
 

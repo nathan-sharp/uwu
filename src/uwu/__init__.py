@@ -1,6 +1,6 @@
 """UWU language prototype package."""
 
-__version__ = "0.0.3"
+__version__ = "0.0.35"
 
 __all__ = [
     "lexer",
