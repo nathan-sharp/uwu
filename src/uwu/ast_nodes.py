@@ -28,6 +28,19 @@ class PrintStmt(Node):
 
 
 @dataclass
+class IfStmt(Node):
+    condition: Node
+    then_body: list[Node]
+    else_body: list[Node]
+
+
+@dataclass
+class WhileStmt(Node):
+    condition: Node
+    body: list[Node]
+
+
+@dataclass
 class Number(Node):
     value: float
 

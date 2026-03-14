@@ -31,6 +31,19 @@ class Lexer:
                 continue
 
             start_line, start_col = self.line, self.col
+            double = {
+                "==": "EQEQ",
+                "!=": "NOTEQ",
+                "<=": "LTE",
+                ">=": "GTE",
+            }
+            pair = self.source[self.i:self.i + 2]
+            if pair in double:
+                tokens.append(Token(double[pair], pair, start_line, start_col))
+                self._advance()
+                self._advance()
+                continue
+
             single = {
                 "(": "LPAREN",
                 ")": "RPAREN",
@@ -38,7 +51,10 @@ class Lexer:
                 "-": "MINUS",
                 "*": "STAR",
                 "/": "SLASH",
+                "%": "PERCENT",
                 "=": "EQUAL",
+                "<": "LT",
+                ">": "GT",
                 ";": "NEWLINE",
             }
             kind = single.get(ch)

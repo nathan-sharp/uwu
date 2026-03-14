@@ -12,4 +12,8 @@ class Token:
 KEYWORDS = {
     "let": "LET",
     "print": "PRINT",
+    "if": "IF",
+    "else": "ELSE",
+    "while": "WHILE",
+    "end": "END",
 }

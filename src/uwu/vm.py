@@ -51,8 +51,56 @@ class VM:
                 a = self._pop()
                 self.stack.append(self._arith(a, b, "/"))
                 continue
+            if ins.op == "BINARY_MOD":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(self._arith(a, b, "%"))
+                continue
+            if ins.op == "COMPARE_EQ":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(1.0 if a == b else 0.0)
+                continue
+            if ins.op == "COMPARE_NE":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(1.0 if a != b else 0.0)
+                continue
+            if ins.op == "COMPARE_LT":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(1.0 if self._cmp(a, b, "<") else 0.0)
+                continue
+            if ins.op == "COMPARE_LTE":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(1.0 if self._cmp(a, b, "<=") else 0.0)
+                continue
+            if ins.op == "COMPARE_GT":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(1.0 if self._cmp(a, b, ">") else 0.0)
+                continue
+            if ins.op == "COMPARE_GTE":
+                b = self._pop()
+                a = self._pop()
+                self.stack.append(1.0 if self._cmp(a, b, ">=") else 0.0)
+                continue
+            if ins.op == "POP_JUMP_IF_FALSE":
+                target = int(ins.arg) if ins.arg is not None else -1
+                if target < 0:
+                    raise RuntimeErrorM("Invalid bytecode: POP_JUMP_IF_FALSE missing target")
+                if not self._is_truthy(self._pop()):
+                    ip = target
+                continue
+            if ins.op == "JUMP":
+                target = int(ins.arg) if ins.arg is not None else -1
+                if target < 0:
+                    raise RuntimeErrorM("Invalid bytecode: JUMP missing target")
+                ip = target
+                continue
             if ins.op == "PRINT":
-                print(self._pop())
+                print(self._display_value(self._pop()))
                 continue
             if ins.op == "RETURN":
                 return
@@ -80,4 +128,39 @@ class VM:
             return a * b
         if op == "/":
             return a / b
+        if op == "%":
+            return a % b
         raise RuntimeErrorM(f"Unknown arithmetic operation: {op}")
+
+    def _cmp(self, a: Value, b: Value, op: str) -> bool:
+        if isinstance(a, float) and isinstance(b, float):
+            if op == "<":
+                return a < b
+            if op == "<=":
+                return a <= b
+            if op == ">":
+                return a > b
+            if op == ">=":
+                return a >= b
+        if isinstance(a, str) and isinstance(b, str):
+            if op == "<":
+                return a < b
+            if op == "<=":
+                return a <= b
+            if op == ">":
+                return a > b
+            if op == ">=":
+                return a >= b
+        raise RuntimeErrorM(f"Type error: '{op}' expects two numbers or two strings")
+
+    def _is_truthy(self, value: Value) -> bool:
+        if isinstance(value, float):
+            return value != 0.0
+        if isinstance(value, str):
+            return value != ""
+        return bool(value)
+
+    def _display_value(self, value: Value) -> Value:
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        return value
