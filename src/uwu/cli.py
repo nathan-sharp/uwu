@@ -42,6 +42,7 @@ def print_runtime_help(parser: argparse.ArgumentParser) -> int:
     print("  help            Show all PAWS commands and project links")
     print("  version         Show the current PAWS version")
     print("  update          Update PAWS from the latest GitHub release")
+    print("  uninstall       Remove PAWS and all PAWS-managed local files")
     print()
     print(f"GitHub: {PROJECT_URL}")
     return 0
@@ -204,6 +205,76 @@ Remove-Item -Force {script_literal} -ErrorAction SilentlyContinue
     )
 
 
+def stage_windows_uninstall(current_path: pathlib.Path) -> None:
+    script_path = pathlib.Path(tempfile.mkstemp(suffix=".ps1")[1])
+    legacy_dir = quote_powershell(str(LEGACY_INSTALL_DIR))
+    legacy_wrapper = quote_powershell(str(pathlib.Path.home() / ".local" / "bin" / "paws.bat"))
+    current_literal = quote_powershell(str(current_path))
+    script_literal = quote_powershell(str(script_path))
+
+    script = f"""$ErrorActionPreference = 'Stop'
+Start-Sleep -Milliseconds 750
+if (Test-Path {legacy_wrapper}) {{
+    Remove-Item -Force {legacy_wrapper}
+}}
+if (Test-Path {legacy_dir}) {{
+    Remove-Item -Recurse -Force {legacy_dir}
+}}
+for ($i = 0; $i -lt 120; $i++) {{
+    try {{
+        if (Test-Path {current_literal}) {{
+            Remove-Item -Force {current_literal}
+        }}
+        break
+    }} catch {{
+        Start-Sleep -Milliseconds 500
+    }}
+}}
+Remove-Item -Force {script_literal} -ErrorAction SilentlyContinue
+"""
+    script_path.write_text(script, encoding="utf-8")
+
+    creationflags = 0
+    creationflags |= getattr(subprocess, "DETACHED_PROCESS", 0)
+    creationflags |= getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+    subprocess.Popen(
+        [
+            "powershell",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=creationflags,
+        close_fds=True,
+    )
+
+
+def uninstall_runtime() -> int:
+    current_path = resolve_install_path()
+    legacy_wrapper = pathlib.Path.home() / ".local" / "bin" / "paws.bat"
+
+    if os.name == "nt":
+        stage_windows_uninstall(current_path)
+        print("PAWS uninstall staged.")
+        print("Close this process and open a new shell to verify 'paws' is gone.")
+        return 0
+
+    cleanup_legacy_install(current_path)
+    if current_path.exists():
+        current_path.unlink(missing_ok=True)
+
+    if legacy_wrapper.exists() and legacy_wrapper != current_path:
+        legacy_wrapper.unlink(missing_ok=True)
+
+    print("PAWS uninstalled.")
+    return 0
+
+
 def update_runtime() -> int:
     current_path = resolve_install_path()
     current_version = __version__
@@ -244,6 +315,7 @@ def main() -> int:
     sub.add_parser("help", help="Show all PAWS commands and project links")
     sub.add_parser("version", help="Show the current PAWS version")
     sub.add_parser("update", help="Update PAWS from the latest GitHub release")
+    sub.add_parser("uninstall", help="Remove PAWS and all PAWS-managed local files")
 
     args = parser.parse_args()
 
@@ -254,6 +326,8 @@ def main() -> int:
             return print_version()
         if args.command == "update":
             return update_runtime()
+        if args.command == "uninstall":
+            return uninstall_runtime()
         if args.command == "run":
             return run_file(args.file)
         return print_runtime_help(parser)
